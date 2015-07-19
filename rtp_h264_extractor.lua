@@ -22,13 +22,18 @@
 
 
 do
+    local MAX_JITTER_SIZE = 50
     local h264_data = Field.new("h264")
+    local rtp_seq = Field.new("rtp.seq")
 	
     local function extract_h264_from_rtp()
-		local h264_tap = Listener.new("ip")
-		local text_window = TextWindow.new("h264 extractor")
-		local packet_count = 0
+	    local h264_tap = Listener.new("ip")
+	    local text_window = TextWindow.new("h264 extractor")
 		local fp = io.open("dump.264", "wb")
+        local seq_payload_table = { }
+        local pass = 0
+        local packet_count = 0
+        local max_packet_count = 0
 		
 		if fp == nil then 
 		    log("open dump file fail")
@@ -38,34 +43,90 @@ do
 		    text_window:append(info)
 			text_window:append("\n")
 		end
-		
-		local function dump_single_nal(h264_payload)
+        
+        local function seq_compare(left, right)  
+            if math.abs(right.key - left.key) < 1000 then  
+                return left.key < right.key  
+            else 
+                return left.key > right.key  
+            end  
+        end  
+        
+        local function dump_single_nal(h264_payload)
 		    fp:write("\00\00\00\01")
-			fp:write(h264_payload:tvb()():raw())
-			fp:flush()
+		    fp:write(h264_payload:tvb()():raw())
+		    fp:flush()
 		end
 		
+        local function on_ordered_h264_payload(h264_data)
+            local naltype = bit.band(h264_data:get_index(0), 0x1f)
+            if naltype > 0 and naltype < 24 then 
+                -- Single NAL unit packet
+				dump_single_nal(h264_data)
+                --log("tap.packet: "..", single nal packet dumpped, naltype = "..tostring(naltype)..", len = "..tostring(packet.len))
+             elseif naltype == 28 then
+                -- FU-A
+		        log("tap.packet: "..", Unsupported nal, naltype = "..tostring(naltype))
+			elseif naltype == 24 then
+				-- STAP-A
+		        log("tap.packet: "..", Unsupported nal, naltype = "..tostring(naltype))
+            else
+                log("tap.packet: "..", Unsupported nal, naltype = "..tostring(naltype))				
+            end 
+        end
+        
+        local function on_jitter_buffer_output()
+            table.sort(seq_payload_table, seq_compare)
+            
+            if #seq_payload_table > 0 then
+                log("on_jitter_buffer_output:  seq = "..tostring(seq_payload_table[1].key)..", payload len = "..tostring(seq_payload_table[1].value:len()))
+                on_ordered_h264_payload(seq_payload_table[1].value)
+                table.remove(seq_payload_table, 1)
+            end
+        end
+        
+        local function jitter_buffer_finilize() 
+            for i, obj in ipairs(seq_payload_table) do
+                log("jitter_buffer_finilize:  seq = "..tostring(obj.key)..", payload len = "..tostring(obj.value:len()))
+                --FIXME: Tvbs can only be created and used in dissectors
+                --can't dump data here
+                on_ordered_h264_payload(obj.value)
+            end
+        end
+        
+        local function on_h264_rtp_payload(seq, payload)
+            --log("on_h264_rtp_payload:  seq = "..tostring(seq.value)..", payload len = "..tostring(payload.len))
+            table.insert(seq_payload_table, { key = tonumber(seq.value), value = payload.value })
+            
+            --log("on_h264_rtp_payload: table size is "..tostring(#seq_payload_table))
+            if #seq_payload_table > MAX_JITTER_SIZE then
+                on_jitter_buffer_output()
+            end
+        end
+        
 		function h264_tap.packet(pinfo, tvb)
-		    local packetTable = { h264_data() }
-			
-			for i, packet in ipairs(packetTable) do 
-			    local h264_payload = packet.value
-				local naltype = bit.band(h264_payload:get_index(0), 0x1f)
-			    packet_count = packet_count + 1
-				if naltype > 0 and naltype < 24 then 
-				    -- Single NAL unit packet
-					dump_single_nal(h264_payload)
-					log("tap.packet: "..tostring(packet_count)..", single nal packet dumpped, naltype = "..tostring(naltype)..", len = "..tostring(packet.len))
-				elseif naltype == 28 then
-                    -- FU-A
-					log("tap.packet: "..tostring(packet_count)..", Unsupported nal, naltype = "..tostring(naltype))
-				elseif naltype == 24 then
-				    -- STAP-A
-					log("tap.packet: "..tostring(packet_count)..", Unsupported nal, naltype = "..tostring(naltype))
-				else
-                    log("tap.packet: "..tostring(packet_count)..", Unsupported nal, naltype = "..tostring(naltype))				
-				end 
-			end    
+		    local payloadTable = { h264_data() }
+            local seqTable = { rtp_seq() }
+            
+            if (#payloadTable) ~= (#seqTable) then 
+                log("ERROR: payloadTable size is "..tostring(#payloadTable)..", seqTable size is "..tostring(#seqTable))
+                return
+            end
+            
+            if pass == 0 then 
+                for i, payload in ipairs(payloadTable) do
+                    max_packet_count = max_packet_count + 1
+                end
+            else 
+                for i, payload in ipairs(payloadTable) do
+                    packet_count = packet_count + 1
+                    on_h264_rtp_payload(seqTable[i], payload)
+                end
+                
+                if packet_count == max_packet_count then
+                    jitter_buffer_finilize()
+                end
+            end 
 		end
 		
 		function h264_tap.reset()
@@ -86,7 +147,13 @@ do
 		
 		text_window:set_atclose(remove)
 		
+        log("phase 1")
+        pass = 0
 		retap_packets()
+        
+        log("phase 2:  max_packet_count = "..tostring(max_packet_count))
+        pass = 1
+        retap_packets()
 		
 		log("End")
 	end
