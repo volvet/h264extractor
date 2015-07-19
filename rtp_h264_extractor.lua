@@ -143,13 +143,13 @@ do
             h264_tap:remove()
         end 
 		
-		log("Start")
+        log("Start")
 		
-		text_window:set_atclose(remove)
+        text_window:set_atclose(remove)
 		
         log("phase 1")
         pass = 0
-		retap_packets()
+        retap_packets()
         
         log("phase 2:  max_packet_count = "..tostring(max_packet_count))
         pass = 1
