@@ -34,6 +34,7 @@ do
         local pass = 0
         local packet_count = 0
         local max_packet_count = 0
+        local fu_info = nil
 		
         if fp == nil then 
             log("open dump file fail")
@@ -57,19 +58,96 @@ do
             fp:write(h264_payload:tvb()():raw())
             fp:flush()
         end
+        
+        local function dump_fu_a(fu_info) 
+            if  fu_info.complete ==  true then 
+                log("dump_fu_a")
+                fp:write("\00\00\00\01")
+                fp:write(string.char(fu_info.nal_header))
+            
+                for i, obj in ipairs(fu_info.payloads) do
+                    fp:write(obj:tvb()():raw(2))
+                end
+                fp:flush()
+            else
+                log("Incomplete NAL from FUs, dropped")
+            end
+        end
+        
+        local function handle_fu_a(seq, h264_data)
+            fu_indicator = h264_data:get_index(0)
+            fu_header = h264_data:get_index(1)
+            nal_header = bit.bor(bit.band(fu_indicator, 0xe0), bit.band(fu_header, 0x1f))
+            
+            if bit.band(fu_header, 0x80) ~= 0 then
+                -- fu start flag found
+                fu_info = { }
+                fu_info.payloads = { }
+                fu_info.seq = seq
+                fu_info.complete = true
+                fu_info.nal_header = nal_header
+                
+                table.insert(fu_info.payloads, h264_data)
+                log("Fu start: seq = "..tostring(seq))
+                return
+            end
+            
+            if fu_info == nil then 
+                log("Incomplete FU found: No start flag, dropped")
+                return
+            end
+            
+            if seq ~= (fu_info.seq + 1)% 65536 then
+                log("Incomplete FU found:  fu_info.seq = "..tostring(fu_info.seq)..", input seq = "..tostring(seq))
+                fu_info.complete = false;
+                return
+            end
+            
+            fu_info.seq = seq
+            
+            table.insert(fu_info.payloads, h264_data)
+            
+            if bit.band(fu_header, 0x40) ~= 0 then
+                -- fu end flag found
+                log("Fu stop: seq = "..tostring(seq))
+                dump_fu_a(fu_info)
+                fu_info = nil
+            end 
+            
+        end
+        
+        local function handle_stap_a(h264_data)
+            offset = 1
+            repeat
+                size = h264_data:tvb()(offset, 2):uint()
+                fp:write("\00\00\00\01")
+                fp:write(h264_data:tvb()():raw(offset+2, size))
+                offset = offset + size + 2
+            until offset >= h264_data:tvb():len()
+            fp:flush()
+            log("dump stap nals")
+        end
 		
-        local function on_ordered_h264_payload(h264_data)
+        local function on_ordered_h264_payload(seq, h264_data)
             local naltype = bit.band(h264_data:get_index(0), 0x1f)
             if naltype > 0 and naltype < 24 then 
                 -- Single NAL unit packet
+                if fu_info ~= nil then
+                    log("Incomplete FU found: No start flag, dropped")
+                    fu_info = nil
+                end
                 dump_single_nal(h264_data)
                 --log("tap.packet: "..", single nal packet dumpped, naltype = "..tostring(naltype)..", len = "..tostring(packet.len))
             elseif naltype == 28 then
                 -- FU-A
-                log("tap.packet: "..", Unsupported nal, naltype = "..tostring(naltype))
+                handle_fu_a(seq, h264_data)
             elseif naltype == 24 then
                 -- STAP-A
-                log("tap.packet: "..", Unsupported nal, naltype = "..tostring(naltype))
+                if fu_info ~= nil then
+                    log("Incomplete FU found: No start flag, dropped")
+                    fu_info = nil
+                end
+                handle_stap_a(h264_data)
             else
                 log("tap.packet: "..", Unsupported nal, naltype = "..tostring(naltype))				
             end 
@@ -80,7 +158,7 @@ do
             
             if #seq_payload_table > 0 then
                 log("on_jitter_buffer_output:  seq = "..tostring(seq_payload_table[1].key)..", payload len = "..tostring(seq_payload_table[1].value:len()))
-                on_ordered_h264_payload(seq_payload_table[1].value)
+                on_ordered_h264_payload(seq_payload_table[1].key, seq_payload_table[1].value)
                 table.remove(seq_payload_table, 1)
             end
         end
@@ -90,7 +168,7 @@ do
                 log("jitter_buffer_finilize:  seq = "..tostring(obj.key)..", payload len = "..tostring(obj.value:len()))
                 --FIXME: Tvbs can only be created and used in dissectors
                 --can't dump data here
-                on_ordered_h264_payload(obj.value)
+                on_ordered_h264_payload(obj.key, obj.value)
             end
         end
         
