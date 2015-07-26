@@ -1,5 +1,5 @@
 # h264extractor
-wireshark plugin to extract h264 stream from rtp packets
+wireshark plugin to extract h264 stream from rtp packets, support Single NAL Unit Mode(RTP Packetizatio Mode 0),  FU-A and STAP-A
 
 # How to use h264extractor
 * Copy rtp_h264_extractor.lua to the directory where wireshark was installed
@@ -8,5 +8,3 @@ wireshark plugin to extract h264 stream from rtp packets
 * Menu - Tools - Extract h264 stream from RTP
 
 # TODO
-* FU-A Support
-* STAP-A Support
