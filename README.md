@@ -1,5 +1,5 @@
 # h264extractor
-wireshark plug to extract h264 stream from rtp packets
+wireshark plugin to extract h264 stream from rtp packets
 
 # How to use h264extractor
 * Copy rtp_h264_extractor.lua to the directory where wireshark was installed
