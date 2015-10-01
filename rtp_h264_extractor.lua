@@ -166,8 +166,6 @@ do
         local function jitter_buffer_finilize() 
             for i, obj in ipairs(seq_payload_table) do
                 log("jitter_buffer_finilize:  seq = "..tostring(obj.key)..", payload len = "..tostring(obj.value:len()))
-                --FIXME: Tvbs can only be created and used in dissectors
-                --can't dump data here
                 on_ordered_h264_payload(obj.key, obj.value)
             end
         end
