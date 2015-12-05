@@ -27,7 +27,7 @@ do
     
     local function extract_opus_from_rtp()
         local opus_tap = Listener.new("ip")
-        local text_window = TextWindow.new("h264 extractor")
+        local text_window = TextWindow.new("opus extractor")
         local fp = io.open("dump.opus", "wb")
         local seq_payload_table = { }
         local packet_count = 0
