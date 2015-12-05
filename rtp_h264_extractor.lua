@@ -36,13 +36,13 @@ do
         local max_packet_count = 0
         local fu_info = nil
 		
-        if fp == nil then 
-            log("open dump file fail")
-        end
-		
         local function log(info)
             text_window:append(info)
             text_window:append("\n")
+        end
+        
+        if fp == nil then 
+            log("open dump file fail")
         end
         
         local function seq_compare(left, right)  
