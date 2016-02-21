@@ -55,7 +55,18 @@ do
             end  
         end
         
+        local function writebytes(f,x)
+            local b1=string.char(x%256) x=(x-x%256)/256
+            local b2=string.char(x%256) x=(x-x%256)/256
+            local b3=string.char(x%256) x=(x-x%256)/256
+            local b4=string.char(x%256) x=(x-x%256)/256
+            f:write(b1,b2,b3,b4)
+        end
+        
         local function on_ordered_opus_payload(seq, opus_data)
+            length = opus_data:tvb():len()
+            --log("Opus packet length = "..tostring(length).."formated:"..string.format("%04x", length))         
+            writebytes(fp, length)
             fp:write(opus_data:tvb()():raw())
             fp:flush()
         end
