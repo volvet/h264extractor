@@ -117,15 +117,19 @@ do
         end
         
         local function handle_stap_a(h264_data)
-            offset = 1
+			log("start dump stap nals")
+            offset = 1		-- skip nal header of STAP-A
             repeat
                 size = h264_data:tvb()(offset, 2):uint()
+				offset = offset + 2
+				local next_nal_type = bit.band(h264_data:get_index(offset), 0x1f)
+				log("STAP-A has naltype = "..next_nal_type..", size = "..size)
                 fp:write("\00\00\00\01")
-                fp:write(h264_data:tvb()():raw(offset+2, size))
-                offset = offset + size + 2
+                fp:write(h264_data:tvb()():raw(offset, size))
+                offset = offset + size
             until offset >= h264_data:tvb():len()
             fp:flush()
-            log("dump stap nals")
+            log("finish dump stap nals")
         end
 		
         local function on_ordered_h264_payload(seq, h264_data)
@@ -184,19 +188,20 @@ do
             local payloadTable = { h264_data() }
             local seqTable = { rtp_seq() }
             
-            if (#payloadTable) ~= (#seqTable) then 
-                log("ERROR: payloadTable size is "..tostring(#payloadTable)..", seqTable size is "..tostring(#seqTable))
-                return
-            end
+--            if (#payloadTable) ~= (#seqTable) then 
+--                log("ERROR: payloadTable size is "..tostring(#payloadTable)..", seqTable size is "..tostring(#seqTable))
+--                return
+--            end
             
             if pass == 0 then 
                 for i, payload in ipairs(payloadTable) do
                     max_packet_count = max_packet_count + 1
                 end
             else 
+				packet_count = packet_count + 1
+				
                 for i, payload in ipairs(payloadTable) do
-                    packet_count = packet_count + 1
-                    on_h264_rtp_payload(seqTable[i], payload)
+                    on_h264_rtp_payload(seqTable[1], payload)
                 end
                 
                 if packet_count == max_packet_count then
