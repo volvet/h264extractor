@@ -117,11 +117,11 @@ do
         end
         
         local function handle_stap_a(h264_data)
-			log("start dump stap nals")
+            log("start dump stap nals")
             offset = 1		-- skip nal header of STAP-A
             repeat
                 size = h264_data:tvb()(offset, 2):uint()
-				offset = offset + 2
+                offset = offset + 2
 				local next_nal_type = bit.band(h264_data:get_index(offset), 0x1f)
 				log("STAP-A has naltype = "..next_nal_type..", size = "..size)
                 fp:write("\00\00\00\01")
