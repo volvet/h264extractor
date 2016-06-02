@@ -122,8 +122,8 @@ do
             repeat
                 size = h264_data:tvb()(offset, 2):uint()
                 offset = offset + 2
-				local next_nal_type = bit.band(h264_data:get_index(offset), 0x1f)
-				log("STAP-A has naltype = "..next_nal_type..", size = "..size)
+                local next_nal_type = bit.band(h264_data:get_index(offset), 0x1f)
+                log("STAP-A has naltype = "..next_nal_type..", size = "..size)
                 fp:write("\00\00\00\01")
                 fp:write(h264_data:tvb()():raw(offset, size))
                 offset = offset + size
@@ -198,8 +198,8 @@ do
                     max_packet_count = max_packet_count + 1
                 end
             else 
-				packet_count = packet_count + 1
-				
+                packet_count = packet_count + 1
+                
                 for i, payload in ipairs(payloadTable) do
                     on_h264_rtp_payload(seqTable[1], payload)
                 end
