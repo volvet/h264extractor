@@ -188,10 +188,10 @@ do
             local payloadTable = { h264_data() }
             local seqTable = { rtp_seq() }
             
---            if (#payloadTable) ~= (#seqTable) then 
---                log("ERROR: payloadTable size is "..tostring(#payloadTable)..", seqTable size is "..tostring(#seqTable))
---                return
---            end
+            if (#payloadTable) < (#seqTable) then 
+                log("ERROR: payloadTable size is "..tostring(#payloadTable)..", seqTable size is "..tostring(#seqTable))
+                return
+            end
             
             if pass == 0 then 
                 for i, payload in ipairs(payloadTable) do
