@@ -26,7 +26,16 @@ do
     local rtp_seq = Field.new("rtp.seq")
     
     local function extract_opus_from_rtp()
-        local opus_tap = Listener.new("ip")
+        local function dump_filter(fd)
+            local fh = "rtp";
+            if fd ~= nil and fd ~= "" then
+                return string.format("%s and (%s)", fh, fd)
+            else    
+                return fh
+            end
+        end
+
+        local opus_tap = Listener.new("ip", dump_filter(get_filter()))
         local text_window = TextWindow.new("opus extractor")
         local fp = io.open("dump.opus", "wb")
         local seq_payload_table = { }

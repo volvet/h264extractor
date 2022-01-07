@@ -27,7 +27,16 @@ do
     local rtp_seq = Field.new("rtp.seq")
 	
     local function extract_h264_from_rtp()
-        local h264_tap = Listener.new("ip", "h264")
+        local function dump_filter(fd)
+            local fh = "h264";
+            if fd ~= nil and fd ~= "" then
+                return string.format("%s and (%s)", fh, fd)
+            else    
+                return fh
+            end
+        end
+
+        local h264_tap = Listener.new("ip", dump_filter(get_filter()))
         local text_window = TextWindow.new("h264 extractor")
         local fp = io.open("dump.264", "wb")
         local seq_payload_table = { }
