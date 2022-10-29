@@ -38,7 +38,7 @@ do
 
         local h264_tap = Listener.new("ip", dump_filter(get_filter()))
         local text_window = TextWindow.new("h264 extractor")
-        local fp = io.open("dump.264", "wb")
+        local filename = ""
         local seq_payload_table = { }
         local pass = 0
         local packet_count = 0
@@ -50,6 +50,15 @@ do
             text_window:append("\n")
         end
         
+        -- get_preference is only available since 3.5.0
+        if get_preference then
+            filename = get_preference("gui.fileopen.dir") .. "/" .. os.date("video_%Y%m%d-%H%M%S.264")
+        else
+            filename = "dump.264"
+        end
+        
+        log("Dumping H264 stream to " .. filename)
+        local fp = io.open(filename, "wb")
         if fp == nil then 
             log("open dump file fail")
         end
@@ -244,7 +253,13 @@ do
         log("phase 2:  max_packet_count = "..tostring(max_packet_count))
         pass = 1
         retap_packets()
-		
+
+        if fp ~= nil then 
+           fp:close()
+           fp = nil
+           log("Video stream written to " .. filename)
+        end
+        
         log("End")
 	end
 
