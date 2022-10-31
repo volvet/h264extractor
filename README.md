@@ -1,5 +1,5 @@
 # H264extractor
-wireshark plugin to extract h264 stream from rtp packets, support Single NAL Unit Mode(RTP Packetization Mode 0),  FU-A and STAP-A.  In addition, opus stream is supported as well.
+Wireshark plugin to extract h264 stream from rtp packets, support Single NAL Unit Mode(RTP Packetization Mode 0),  FU-A and STAP-A.  In addition, opus stream is supported as well.
 
 # How to use h264extractor
 * Copy rtp_h264_extractor.lua to the directory where wireshark was installed
@@ -13,7 +13,7 @@ wireshark plugin to extract h264 stream from rtp packets, support Single NAL Uni
 * when open pcap file in wireshark,  decode as RTP.  
 * Menu - Tools - Extract opus stream from RTP
 
-# Good Tutorials
+# Good tutorials
 * https://blog.networkcentric.org/wireshark-h264-video-decoding/
 
 # Reference
