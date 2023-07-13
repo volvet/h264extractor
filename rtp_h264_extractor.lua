@@ -44,6 +44,7 @@ do
         local packet_count = 0
         local max_packet_count = 0
         local fu_info = nil
+        local pre_seq = 0;
 		
         local function log(info)
             text_window:append(info)
@@ -193,7 +194,22 @@ do
         end
         
         local function on_h264_rtp_payload(seq, payload)
-            --log("on_h264_rtp_payload:  seq = "..tostring(seq.value)..", payload len = "..tostring(payload.len))
+            local cur_seq = seq.value
+            --log("on_h264_rtp_payload:  seq = "..tostring(seq.value)..", payload len = "..tostring(payload.len)..",pre_seq = "..pre_seq..",cur_seq = "..cur_seq..",packet_count = "..packet_count)
+            if packet_count == 0 then
+                pre_seq = cur_seq
+            else
+                if cur_seq == pre_seq then
+                    packet_count = packet_count + 1
+                    --log("on_h264_rtp_payload, duplicate seq = "..tostring(seq.value)..",packet_count = "..packet_count)
+                    return
+                else
+                    pre_seq = cur_seq
+                end
+            end
+
+            packet_count = packet_count + 1
+
             table.insert(seq_payload_table, { key = tonumber(seq.value), value = payload.value })
             
             --log("on_h264_rtp_payload: table size is "..tostring(#seq_payload_table))
@@ -216,7 +232,6 @@ do
                     max_packet_count = max_packet_count + 1
                 end
             else 
-                packet_count = packet_count + 1
                 
                 for i, payload in ipairs(payloadTable) do
                     on_h264_rtp_payload(seqTable[1], payload)
