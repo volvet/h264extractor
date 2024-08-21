@@ -37,7 +37,25 @@ do
 
         local opus_tap = Listener.new("ip", dump_filter(get_filter()))
         local text_window = TextWindow.new("opus extractor")
-        local fp = io.open("dump.opus", "wb")
+
+        local function log(info)
+            text_window:append(info)
+            text_window:append("\n")
+        end
+
+        -- get_preference is only available since 3.5.0
+        if get_preference then
+            filename = get_preference("gui.fileopen.dir") .. "/" .. os.date("audio_%Y%m%d-%H%M%S.opus")
+        else
+            filename = "dump.opus"
+        end
+
+        log("Dumping OPUS stream to " .. filename)
+        local fp = io.open(filename, "wb")
+        if fp == nil then 
+            log("open dump file fail")
+        end
+
         local seq_payload_table = { }
         local packet_count = 0
         local max_packet_count = 0;
