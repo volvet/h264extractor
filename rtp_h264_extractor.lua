@@ -53,7 +53,12 @@ do
         
         -- get_preference is only available since 3.5.0
         if get_preference then
-            filename = get_preference("gui.fileopen.dir") .. "/" .. os.date("video_%Y%m%d-%H%M%S.264")
+            local fileopen_dir = get_preference("gui.fileopen.dir")
+            if fileopen_dir == '' then
+                log("Wireshark preference 'gui.fileopen.dir' is not set, aborting.")
+                return
+            end
+            filename = fileopen_dir  .. "/" .. os.date("video_%Y%m%d-%H%M%S.264")
         else
             filename = "dump.264"
         end
@@ -61,7 +66,8 @@ do
         log("Dumping H264 stream to " .. filename)
         local fp = io.open(filename, "wb")
         if fp == nil then 
-            log("open dump file fail")
+            log("Failed to open dump file '" .. filename .. "'")
+            return
         end
         
         local function seq_compare(left, right)  
