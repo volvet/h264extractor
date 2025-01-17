@@ -22,5 +22,3 @@ Wireshark plugin to extract h264 stream from rtp packets, support Single NAL Uni
 * https://tools.ietf.org/html/rfc7587
 * https://tools.ietf.org/html/rfc7798
 
-
-[<img src="https://api.gitsponsors.com/api/badge/img?id=39318081" height="20">](https://api.gitsponsors.com/api/badge/link?p=fp3nkUXpgr6ryuNg3WwY2xoas7jtEaq0Boe+K/aQ2yvDtvP38+b2H+LmJn7ubnUN)
